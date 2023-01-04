@@ -6,29 +6,6 @@ set -o pipefail
 ###
 # Environment variable definitions.
 ##
-if [[ -n "${TOKEN}" ]]; then
-  GITHUB_TOKEN=${TOKEN}
-fi
-
-if [[ -z "${GITHUB_TOKEN}" ]]; then
-  echo "Set the GITHUB_TOKEN env variable."
-  exit 1
-fi
-
-if [[ -z "${TARGET_REPO}" ]]; then
-  echo "Set the TARGET_REPO env variable."
-  exit 1
-fi
-
-if [[ -z "${TARGET_BRANCH}" ]]; then
-  TARGET_BRANCH=main
-  echo "No TARGET_BRANCH was set, so defaulting to ${TARGET_BRANCH}"
-fi
-
-if [[ -z "${HUGO_PUBLISH_DIR}" ]]; then
-  HUGO_PUBLISH_DIR=public
-  echo "No HUGO_PUBLISH_DIR was set, so defaulting to ${HUGO_PUBLISH_DIR}"
-fi
 
 if [[ -z "${HUGO_VERSION}" ]]; then
     HUGO_VERSION=$(curl -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/gohugoio/hugo/releases?page=1&per_page=1" | jq -r ".[].tag_name" | sed 's/v//g')
@@ -85,39 +62,5 @@ git config --global --add safe.directory "${PWD}"
 ###
 echo "Building the Hugo site with: 'hugo ${HUGO_ARGS}'"
 hugo "${HUGO_ARGS}"
-
-TARGET_REPO_URL="https://${GITHUB_TOKEN}@github.com/${TARGET_REPO}.git"
-
-rm -rf .git
-cd ${HUGO_PUBLISH_DIR}
-
-if [[ -n "${CNAME}" ]]; then
-    echo "CNAME set to ${CNAME}, creating file CNAME"
-    echo "${CNAME}" > CNAME
-fi
-
-echo "Committing the site to git and pushing"
-
-git init
-
-if ! git config --get user.name; then
-    git config --global user.name "${GITHUB_ACTOR}"
-fi
-
-if ! git config --get user.email; then
-    git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-fi
-
-echo "Getting hash for base repository commit"
-HASH=$(echo "${GITHUB_SHA}" | cut -c1-7)
-
-###
-# Now add all the changes and commit and push
-###
-git checkout -b ${TARGET_BRANCH}
-
-git add . && \
-git commit -m "Auto publishing site from ${GITHUB_REPOSITORY}@${HASH}" && \
-git push --force "${TARGET_REPO_URL}" ${TARGET_BRANCH}
 
 echo "Complete"
